@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.db
+.env
+.DS_Store
+
+# Local MCP secrets — copy .cursor/mcp.json.example to mcp.json
+.cursor/mcp.json
+
+.vercel

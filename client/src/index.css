@@ -1,0 +1,358 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light: soft lilac canvas + rich violet accent */
+:root {
+  color-scheme: light;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-bg-main: #f5f2fc;
+  --color-bg-primary: #faf8ff;
+  --color-bg-secondary: #ede8f7;
+  --color-bg-card: #ffffff;
+  --color-bg-hover: #e4dcf5;
+  --color-bg-elevated: #ffffff;
+  --color-bg-input: #fbf9ff;
+  --color-sidebar: #1a0d33;
+  --color-sidebar-border: rgba(167, 139, 250, 0.18);
+  --color-sidebar-muted: #a89bc4;
+  --color-sidebar-active-bg: rgba(124, 58, 237, 0.24);
+  --color-sidebar-active-text: #f5f3ff;
+  --color-text-primary: #140a26;
+  --color-text-secondary: #4b3d66;
+  --color-text-muted: #766892;
+  --color-border: rgba(76, 29, 149, 0.1);
+  --color-border-strong: rgba(76, 29, 149, 0.16);
+  --color-accent: #5b21b6;
+  --color-accent-bright: #7c3aed;
+  --color-accent-hover: #8b5cf6;
+  --color-accent-muted: rgba(124, 58, 237, 0.22);
+  --color-accent-soft: rgba(124, 58, 237, 0.12);
+  --color-accent-glow: rgba(124, 58, 237, 0.38);
+  --color-danger: #dc2626;
+  --glass-bg: rgba(255, 252, 255, 0.78);
+  --glass-border: rgba(76, 29, 149, 0.08);
+  --shadow-sm: 0 1px 2px rgba(30, 16, 51, 0.05);
+  --shadow-md: 0 10px 32px rgba(30, 16, 51, 0.1);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 1px 3px rgba(30, 16, 51, 0.06);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+}
+
+/* Dark: deep violet-black workspace */
+.dark {
+  color-scheme: dark;
+  --color-bg-main: #06040f;
+  --color-bg-primary: #080510;
+  --color-bg-secondary: #10081f;
+  --color-bg-card: #120a24;
+  --color-bg-hover: #1c1232;
+  --color-bg-elevated: #0f081c;
+  --color-bg-input: #0c0614;
+  --color-sidebar: #0a0518;
+  --color-sidebar-border: rgba(167, 139, 250, 0.12);
+  --color-sidebar-muted: #8b7aaa;
+  --color-sidebar-active-bg: rgba(124, 58, 237, 0.2);
+  --color-sidebar-active-text: #f5f3ff;
+  --color-text-primary: #f4f0ff;
+  --color-text-secondary: #c4b5dc;
+  --color-text-muted: #8f7cb0;
+  --color-border: rgba(167, 139, 250, 0.12);
+  --color-border-strong: rgba(196, 181, 253, 0.18);
+  --color-accent: #7c3aed;
+  --color-accent-bright: #a78bfa;
+  --color-accent-hover: #c4b5fd;
+  --color-accent-muted: rgba(167, 139, 250, 0.22);
+  --color-accent-soft: rgba(124, 58, 237, 0.18);
+  --color-accent-glow: rgba(167, 139, 250, 0.42);
+  --color-danger: #f87171;
+  --glass-bg: rgba(18, 10, 36, 0.72);
+  --glass-border: rgba(167, 139, 250, 0.1);
+  --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --shadow-md: 0 12px 48px rgba(0, 0, 0, 0.55);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 0 0 1px rgba(167, 139, 250, 0.08);
+  --shadow-glow: 0 0 80px rgba(124, 58, 237, 0.12);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-main);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Ambient glow — main column only */
+.app-main-bg {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-main-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 100% 70% at 50% -20%, rgba(124, 58, 237, 0.12), transparent 55%);
+}
+
+.dark .app-main-bg::before {
+  background:
+    radial-gradient(ellipse 90% 55% at 100% 0%, rgba(124, 58, 237, 0.14), transparent 50%),
+    radial-gradient(ellipse 70% 45% at 0% 100%, rgba(91, 33, 182, 0.1), transparent 45%);
+}
+
+.app-main-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Shared control chrome */
+.ui-input {
+  background-color: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ui-input:hover {
+  border-color: var(--color-border-strong);
+}
+
+.ui-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-muted);
+}
+
+.ui-btn-primary {
+  background: linear-gradient(180deg, var(--color-accent-bright) 0%, var(--color-accent) 100%);
+  color: #faf8ff;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 0 24px var(--color-accent-glow);
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.ui-btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.ui-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.ui-btn-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dark .ui-btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ui-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-border-strong);
+}
+
+.ui-panel-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.dark .ui-panel-glass {
+  background: rgba(16, 10, 32, 0.75);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn-primary {
+    transition-duration: 0.01ms;
+  }
+
+  .landing-nebula-blob,
+  .landing-star-motion {
+    animation: none !important;
+  }
+}
+
+/* Landing: glossy space background + star drift (see LandingPage.jsx) */
+@keyframes landing-nebula-drift {
+  0%,
+  100% {
+    transform: scale(1.03) translate(0%, 0%);
+    opacity: 0.9;
+  }
+  33% {
+    transform: scale(1.08) translate(-1.5%, 1%);
+    opacity: 1;
+  }
+  66% {
+    transform: scale(1.05) translate(1%, -0.5%);
+    opacity: 0.92;
+  }
+}
+
+@keyframes landing-star-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: var(--star-o1, 0.45);
+  }
+  50% {
+    transform: translate3d(var(--star-dx, 18px), var(--star-dy, -22px), 0);
+    opacity: var(--star-o2, 0.95);
+  }
+}
+
+/* ── Main app workspace (separate from landing): void + violet, mono data ── */
+.jobsim-workspace {
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
+}
+
+.jobsim-workspace input,
+.jobsim-workspace select,
+.jobsim-workspace textarea,
+.jobsim-workspace button,
+.jobsim-workspace option {
+  font-family: var(--font-mono);
+}
+
+html.dark .jobsim-workspace {
+  --color-bg-main: #010102;
+  --color-bg-primary: #020203;
+  --color-bg-secondary: #0b0b10;
+  --color-bg-card: #08080f;
+  --color-bg-hover: #12121a;
+  --color-bg-elevated: #06060b;
+  --color-bg-input: #0a0a12;
+  --color-sidebar: #000000;
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+  --color-sidebar-muted: #71717a;
+  --color-sidebar-active-bg: rgba(255, 255, 255, 0.07);
+  --color-sidebar-active-text: #fafafa;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #52525b;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-accent: #7c3aed;
+  --color-accent-bright: #ddd6fe;
+  --color-accent-hover: #c4b5fd;
+  --color-accent-muted: rgba(124, 58, 237, 0.28);
+  --color-accent-soft: rgba(124, 58, 237, 0.14);
+  --color-accent-glow: rgba(196, 181, 253, 0.22);
+  --glass-bg: rgba(6, 6, 10, 0.94);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --shadow-sm: none;
+  --shadow-md: 0 28px 100px rgba(0, 0, 0, 0.55);
+  --shadow-card: none;
+}
+
+html:not(.dark) .jobsim-workspace {
+  --color-bg-main: #ececee;
+  --color-bg-primary: #f7f7f8;
+  --color-bg-secondary: #e4e4e8;
+  --color-bg-card: #ffffff;
+  --color-bg-hover: #dedee3;
+  --color-bg-elevated: #fafafa;
+  --color-bg-input: #ffffff;
+  --color-sidebar: #ebebef;
+  --color-sidebar-border: rgba(0, 0, 0, 0.08);
+  --color-sidebar-muted: #52525b;
+  --color-sidebar-active-bg: rgba(0, 0, 0, 0.06);
+  --color-sidebar-active-text: #09090b;
+  --color-text-primary: #09090b;
+  --color-text-secondary: #3f3f46;
+  --color-text-muted: #71717a;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-border-strong: rgba(0, 0, 0, 0.16);
+  --color-accent: #5b21b6;
+  --color-accent-bright: #6d28d9;
+  --color-accent-hover: #7c3aed;
+  --color-accent-muted: rgba(91, 33, 182, 0.18);
+  --color-accent-soft: rgba(91, 33, 182, 0.1);
+  --color-accent-glow: rgba(91, 33, 182, 0.2);
+  --glass-bg: rgba(255, 255, 255, 0.96);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --shadow-sm: none;
+  --shadow-md: 0 20px 60px rgba(0, 0, 0, 0.08);
+  --shadow-card: none;
+}
+
+.jobsim-workspace .app-main-bg::before {
+  opacity: 0.45;
+  background:
+    radial-gradient(ellipse 85% 50% at 90% 0%, rgba(124, 58, 237, 0.14), transparent 52%),
+    radial-gradient(ellipse 65% 45% at 0% 100%, rgba(76, 29, 149, 0.1), transparent 48%);
+}
+
+html:not(.dark) .jobsim-workspace .app-main-bg::before {
+  opacity: 0.55;
+  background: radial-gradient(ellipse 80% 45% at 50% -15%, rgba(91, 33, 182, 0.07), transparent 55%);
+}
+
+.jobsim-workspace .ui-panel-glass {
+  border-radius: 2px;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+html.dark .jobsim-workspace .ui-panel-glass {
+  background: rgba(8, 8, 12, 0.96);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+html:not(.dark) .jobsim-workspace .ui-panel-glass {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Workspace buttons: flat, no gradient/glow — matches terminal aesthetic */
+.jobsim-workspace .ui-btn-primary {
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-accent-bright);
+  box-shadow: none;
+  font-family: var(--font-mono);
+}
+
+.jobsim-workspace .ui-btn-primary:hover {
+  filter: none;
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-muted);
+}
+
+.jobsim-workspace .ui-btn-ghost {
+  font-family: var(--font-mono);
+}
