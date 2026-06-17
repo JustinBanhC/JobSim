@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from './components/layout/AppShell';
 import ApplicationsPage from './pages/ApplicationsPage';
+import DiscoverPage from './pages/DiscoverPage';
 import SkillsPage from './pages/SkillsPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import LandingPage from './pages/LandingPage';
@@ -92,6 +93,7 @@ function App() {
       userEmail={user.email}
     >
       {view === 'applications' && <ApplicationsPage key={`apps-${refreshKey}`} />}
+      {view === 'discover' && <DiscoverPage key={`discover-${refreshKey}`} />}
       {view === 'skills' && <SkillsPage key={`skills-${refreshKey}`} />}
       {view === 'connections' && <ConnectionsPage key={`contacts-${refreshKey}`} />}
       <AgentPanel

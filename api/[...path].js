@@ -368,7 +368,7 @@ app.post('/api/agent/chat', async (req, res) => {
     const contents = messages.map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] }));
     let loops = 0;
     while (loops++ < 8) {
-      const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents, config: { systemInstruction: SYSTEM_INSTRUCTION, tools: agentTools } });
+      const response = await ai.models.generateContent({ model: process.env.GEMINI_MODEL || 'gemini-3.5-flash', contents, config: { systemInstruction: SYSTEM_INSTRUCTION, tools: agentTools } });
       const parts = response.candidates?.[0]?.content?.parts || [];
       let hasFunc = false;
       const fnParts = [];

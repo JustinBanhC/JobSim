@@ -1,0 +1,9 @@
+[
+  { "company": "SimplifyJobs Internships", "board_type": "github", "config": { "repo": "SimplifyJobs/Summer2026-Internships" } },
+  { "company": "SimplifyJobs New Grad", "board_type": "github", "config": { "repo": "SimplifyJobs/New-Grad-Positions" } },
+  { "company": "Anthropic", "board_type": "greenhouse", "config": { "org": "anthropic", "company": "Anthropic" } },
+  { "company": "Anduril", "board_type": "greenhouse", "config": { "org": "andurilindustries", "company": "Anduril" } },
+  { "company": "Figma", "board_type": "greenhouse", "config": { "org": "figma", "company": "Figma" } },
+  { "company": "Ramp", "board_type": "ashby", "config": { "org": "ramp", "company": "Ramp" } },
+  { "company": "Notion", "board_type": "ashby", "config": { "org": "notion", "company": "Notion" } }
+]

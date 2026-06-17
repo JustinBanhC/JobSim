@@ -56,44 +56,75 @@ export const api = {
     delete: (id) => request(`/skills/${id}`, { method: 'DELETE' }),
   },
   agent: {
-    chat: (messages, onEvent) => {
-      const controller = new AbortController();
-      const promise = (async () => {
-        const headers = await getAuthHeaders();
-        const res = await fetch(`${BASE}/agent/chat`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ messages }),
-          signal: controller.signal,
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: res.statusText }));
-          throw new Error(err.error || 'Agent request failed');
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          let eventType = null;
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventType = line.slice(7).trim();
-            } else if (line.startsWith('data: ') && eventType) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                onEvent(eventType, data);
-              } catch { /* skip malformed */ }
-              eventType = null;
-            }
-          }
-        }
-      })();
-      return { promise, abort: () => controller.abort() };
+    chat: (messages, onEvent) => streamRequest('/agent/chat', { messages }, onEvent),
+  },
+  discovery: {
+    jobs: (params) => {
+      const qs = new URLSearchParams(params).toString();
+      return request(`/discovery/jobs${qs ? `?${qs}` : ''}`);
+    },
+    promote: (id) => request(`/discovery/jobs/${id}/promote`, { method: 'POST' }),
+    dismiss: (id) => request(`/discovery/jobs/${id}/dismiss`, { method: 'POST' }),
+    restore: (id) => request(`/discovery/jobs/${id}/restore`, { method: 'POST' }),
+    run: (sourceIds, onEvent) => streamRequest('/discovery/run', { source_ids: sourceIds }, onEvent),
+    rescore: () => request('/discovery/rescore', { method: 'POST' }),
+    sources: {
+      list: () => request('/discovery/sources'),
+      create: (data) => request('/discovery/sources', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id, data) => request(`/discovery/sources/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id) => request(`/discovery/sources/${id}`, { method: 'DELETE' }),
     },
   },
+  networker: {
+    findContacts: (jobId, onEvent) => streamRequest(`/networker/jobs/${jobId}/find-contacts`, {}, onEvent),
+  },
+  copilot: {
+    getProfile: () => request('/copilot/profile'),
+    saveProfile: (data) => request('/copilot/profile', { method: 'PUT', body: JSON.stringify(data) }),
+    apply: (jobId, onEvent) => streamRequest(`/copilot/apply/${jobId}`, {}, onEvent),
+  },
 };
+
+/**
+ * POST to an SSE endpoint and dispatch parsed events to onEvent(type, data).
+ * Returns { promise, abort } — shared by the agent chat and discovery run streams.
+ */
+function streamRequest(path, body, onEvent) {
+  const controller = new AbortController();
+  const promise = (async () => {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || 'Stream request failed');
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      let eventType = null;
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && eventType) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            onEvent(eventType, data);
+          } catch { /* skip malformed */ }
+          eventType = null;
+        }
+      }
+    }
+  })();
+  return { promise, abort: () => controller.abort() };
+}

@@ -300,7 +300,7 @@ router.post('/chat', async (req, res) => {
       loopCount++;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
         contents,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,

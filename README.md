@@ -50,7 +50,15 @@ The client proxies `/api` requests to the server automatically.
 ## Features
 
 - **Application Tracker** — Kanban board with drag-and-drop, filters, activity logging, and follow-up flagging
+- **Radar (Job Discovery)** — polls Greenhouse/Lever/Ashby/Workday public APIs + GitHub intern-list repos, hard-filters, then AI-scores every posting 1–100 against your profile; promote winners straight into the pipeline
+- **Networker** — per-job contact discovery via Google CSE X-ray + GitHub API, with one-click LinkedIn search links; contacts land in the CRM tagged "Discovered"
+- **Apply Co-pilot** — opens a visible browser on a job's application form and autofills it from your profile vault (you always review and submit)
 - **Networking CRM** — Contact management with outreach tracking and follow-up reminders
-- **Message Drafter** — AI-powered cold email/LinkedIn message drafting via Claude
+- **AI Agent** — chat panel that can read and populate your data via function calling
 - **Skill Roadmap** — Track learning progress and project ideas
-- **Dashboard** — Daily priorities, weekly stats, quick-add actions
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SETUP.md](docs/SETUP.md), and [docs/LEGAL.md](docs/LEGAL.md) for the discovery pipeline details.
+
+> The discovery pipeline (Radar / Networker / Co-pilot) is **local-only** — browser
+> automation can't run on serverless deploys. The deployed client shows a "local only"
+> notice on those pages.

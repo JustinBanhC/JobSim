@@ -11,7 +11,17 @@
       "Bash(curl -s -X POST http://localhost:3001/api/applications -H \"Content-Type: application/json\" -d '{\"company\":\"Google\",\"role\":\"Software Engineer\",\"source\":\"LinkedIn\",\"location\":\"Mountain View, CA\",\"date_applied\":\"2026-05-01\"}')",
       "Bash(curl -s -X POST http://localhost:3001/api/applications -H \"Content-Type: application/json\" -d '{\"company\":\"Stripe\",\"role\":\"Frontend Engineer\",\"status\":\"applied\",\"source\":\"Company Site\",\"location\":\"San Francisco, CA\",\"date_applied\":\"2026-04-28\"}')",
       "Bash(curl -s -X POST http://localhost:3001/api/applications -H \"Content-Type: application/json\" -d '{\"company\":\"Anthropic\",\"role\":\"Full Stack Engineer\",\"status\":\"interviewing\",\"source\":\"Referral\",\"location\":\"San Francisco, CA\",\"date_applied\":\"2026-04-15\"}')",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":3001 \")",
+      "Bash(findstr LISTENING)",
+      "Bash(findstr \":5173 \")",
+      "Bash(curl -sf http://localhost:3001/api/health)",
+      "Bash(curl -sf http://localhost:5173 -o /dev/null -w \"Vite: %{http_code}\")",
+      "Bash(taskkill /PID 50796 /F)",
+      "Bash(taskkill /F /IM node.exe)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)"
     ]
   }
 }

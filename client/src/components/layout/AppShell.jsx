@@ -10,6 +10,12 @@ const NAV_ITEMS = [
     icon: 'ticket',
   },
   {
+    id: 'discover',
+    label: 'Radar',
+    rail: 'Auto-discovery / AI scoring',
+    icon: 'radar',
+  },
+  {
     id: 'skills',
     label: 'Skill tree',
     rail: 'Learn · unlock · progression',
@@ -41,6 +47,16 @@ function NavIcon({ name, active }) {
         <path d="M10 21H3v-7h2a2 2 0 1 1 4 0h1v7z" />
         <path d="M3 10V3h7v2a2 2 0 1 1-4 0H3z" />
         <path d="M21 14v7h-7v-2a2 2 0 1 1 4 0h3z" />
+      </svg>
+    );
+  }
+  if (name === 'radar') {
+    return (
+      <svg viewBox="0 0 24 24" {...common}>
+        <circle cx="12" cy="12" r="9" />
+        <circle cx="12" cy="12" r="5" />
+        <circle cx="12" cy="12" r="1" fill={stroke} />
+        <path d="M12 12 18 5" />
       </svg>
     );
   }
@@ -277,7 +293,7 @@ export default function AppShell({ view, onViewChange, onShowLanding, onAgentTog
                 key={item.id}
                 type="button"
                 onClick={() => onViewChange(item.id)}
-                className="flex-1 min-w-[33%] py-3 text-[10px] font-bold uppercase tracking-[0.12em] cursor-pointer border-b-2 transition-colors"
+                className="flex-1 min-w-[25%] py-3 text-[10px] font-bold uppercase tracking-[0.12em] cursor-pointer border-b-2 transition-colors"
                 style={{
                   borderBottomColor: active ? 'var(--color-accent-bright)' : 'transparent',
                   color: active ? 'var(--color-text-primary)' : 'var(--color-text-muted)',

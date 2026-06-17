@@ -91,6 +91,54 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'idea',
     date_created TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS job_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company TEXT NOT NULL,
+    board_type TEXT NOT NULL,
+    config TEXT NOT NULL DEFAULT '{}',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_run TEXT,
+    last_result TEXT,
+    date_created TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS discovered_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    source_id INTEGER REFERENCES job_sources(id) ON DELETE SET NULL,
+    external_id TEXT,
+    company TEXT NOT NULL,
+    role TEXT NOT NULL,
+    url TEXT NOT NULL UNIQUE,
+    location TEXT,
+    description TEXT,
+    posted_date TEXT,
+    score INTEGER,
+    score_reasons TEXT,
+    hard_filter_result TEXT,
+    status TEXT NOT NULL DEFAULT 'new',
+    application_id INTEGER REFERENCES applications(id) ON DELETE SET NULL,
+    date_discovered TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_discovered_jobs_source_external
+    ON discovered_jobs(source, external_id) WHERE external_id IS NOT NULL;
+
+  CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL DEFAULT '{}',
+    date_updated TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
+
+function addColumnIfMissing(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
+addColumnIfMissing('contacts', 'discovered_job_id', 'discovered_job_id INTEGER REFERENCES discovered_jobs(id) ON DELETE SET NULL');
 
 export default db;
