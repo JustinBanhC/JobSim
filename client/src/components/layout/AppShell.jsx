@@ -4,6 +4,12 @@ const WORKSPACE = { name: 'JobSim', slug: 'Hunt console' };
 
 const NAV_ITEMS = [
   {
+    id: 'dashboard',
+    label: 'Dashboard',
+    rail: 'Mission control / signals',
+    icon: 'gauge',
+  },
+  {
     id: 'applications',
     label: 'Job applications',
     rail: 'Pipeline / stages / SLAs',
@@ -40,6 +46,15 @@ function NavIcon({ name, active }) {
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
   };
+  if (name === 'gauge') {
+    return (
+      <svg viewBox="0 0 24 24" {...common}>
+        <path d="M4 19a9 9 0 1 1 16 0" />
+        <path d="M12 15 16 9" />
+        <circle cx="12" cy="15" r="1" fill={stroke} />
+      </svg>
+    );
+  }
   if (name === 'ticket') {
     return (
       <svg viewBox="0 0 24 24" {...common}>

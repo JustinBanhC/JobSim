@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from './components/layout/AppShell';
 import ApplicationsPage from './pages/ApplicationsPage';
+import DashboardPage from './pages/DashboardPage';
 import DiscoverPage from './pages/DiscoverPage';
 import SkillsPage from './pages/SkillsPage';
 import ConnectionsPage from './pages/ConnectionsPage';
@@ -92,6 +93,7 @@ function App() {
       onSignOut={signOut}
       userEmail={user.email}
     >
+      {view === 'dashboard' && <DashboardPage key={`dashboard-${refreshKey}`} />}
       {view === 'applications' && <ApplicationsPage key={`apps-${refreshKey}`} />}
       {view === 'discover' && <DiscoverPage key={`discover-${refreshKey}`} />}
       {view === 'skills' && <SkillsPage key={`skills-${refreshKey}`} />}
