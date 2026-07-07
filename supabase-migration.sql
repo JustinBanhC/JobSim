@@ -82,38 +82,56 @@ alter table skills enable row level security;
 alter table learning_logs enable row level security;
 
 -- Applications policies
+drop policy if exists "Users can view own applications" on applications;
 create policy "Users can view own applications" on applications for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert own applications" on applications;
 create policy "Users can insert own applications" on applications for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update own applications" on applications;
 create policy "Users can update own applications" on applications for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete own applications" on applications;
 create policy "Users can delete own applications" on applications for delete using (auth.uid() = user_id);
 
 -- Activity policies (via application ownership)
+drop policy if exists "Users can view own activity" on application_activity;
 create policy "Users can view own activity" on application_activity for select
   using (application_id in (select id from applications where user_id = auth.uid()));
+drop policy if exists "Users can insert own activity" on application_activity;
 create policy "Users can insert own activity" on application_activity for insert
   with check (application_id in (select id from applications where user_id = auth.uid()));
 
 -- Contacts policies
+drop policy if exists "Users can view own contacts" on contacts;
 create policy "Users can view own contacts" on contacts for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert own contacts" on contacts;
 create policy "Users can insert own contacts" on contacts for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update own contacts" on contacts;
 create policy "Users can update own contacts" on contacts for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete own contacts" on contacts;
 create policy "Users can delete own contacts" on contacts for delete using (auth.uid() = user_id);
 
 -- Interactions policies (via contact ownership)
+drop policy if exists "Users can view own interactions" on interactions;
 create policy "Users can view own interactions" on interactions for select
   using (contact_id in (select id from contacts where user_id = auth.uid()));
+drop policy if exists "Users can insert own interactions" on interactions;
 create policy "Users can insert own interactions" on interactions for insert
   with check (contact_id in (select id from contacts where user_id = auth.uid()));
 
 -- Skills policies
+drop policy if exists "Users can view own skills" on skills;
 create policy "Users can view own skills" on skills for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert own skills" on skills;
 create policy "Users can insert own skills" on skills for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update own skills" on skills;
 create policy "Users can update own skills" on skills for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete own skills" on skills;
 create policy "Users can delete own skills" on skills for delete using (auth.uid() = user_id);
 
 -- Learning logs policies (via skill ownership)
+drop policy if exists "Users can view own learning logs" on learning_logs;
 create policy "Users can view own learning logs" on learning_logs for select
   using (skill_id in (select id from skills where user_id = auth.uid()));
+drop policy if exists "Users can insert own learning logs" on learning_logs;
 create policy "Users can insert own learning logs" on learning_logs for insert
   with check (skill_id in (select id from skills where user_id = auth.uid()));
 
