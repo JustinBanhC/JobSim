@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from './components/layout/AppShell';
 import ApplicationsPage from './pages/ApplicationsPage';
+import DashboardPage from './pages/DashboardPage';
 import DiscoverPage from './pages/DiscoverPage';
 import SkillsPage from './pages/SkillsPage';
 import ConnectionsPage from './pages/ConnectionsPage';
+import EventsPage from './pages/EventsPage';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import AgentPanel from './components/AgentPanel';
@@ -92,10 +94,12 @@ function App() {
       onSignOut={signOut}
       userEmail={user.email}
     >
+      {view === 'dashboard' && <DashboardPage key={`dashboard-${refreshKey}`} />}
       {view === 'applications' && <ApplicationsPage key={`apps-${refreshKey}`} />}
       {view === 'discover' && <DiscoverPage key={`discover-${refreshKey}`} />}
       {view === 'skills' && <SkillsPage key={`skills-${refreshKey}`} />}
       {view === 'connections' && <ConnectionsPage key={`contacts-${refreshKey}`} />}
+      {view === 'events' && <EventsPage key={`events-${refreshKey}`} />}
       <AgentPanel
         open={agentOpen}
         onClose={() => setAgentOpen(false)}

@@ -130,6 +130,38 @@ db.exec(`
     data TEXT NOT NULL DEFAULT '{}',
     date_updated TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS search_prefs (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL DEFAULT '{}',
+    date_updated TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    host TEXT,
+    event_type TEXT DEFAULT 'other',
+    url TEXT UNIQUE,
+    source TEXT DEFAULT 'other',
+    location TEXT,
+    is_virtual INTEGER,
+    event_date TEXT,
+    description TEXT,
+    score INTEGER,
+    score_reasons TEXT,
+    status TEXT DEFAULT 'new',
+    notes TEXT,
+    date_discovered TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS application_answers (
+    job_id INTEGER PRIMARY KEY REFERENCES discovered_jobs(id) ON DELETE CASCADE,
+    data TEXT NOT NULL DEFAULT '[]',
+    date_updated TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 function addColumnIfMissing(table, column, ddl) {

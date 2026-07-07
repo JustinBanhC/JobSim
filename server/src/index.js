@@ -9,6 +9,8 @@ import agentRouter from './routes/agent.js';
 import discoveryRouter from './routes/discovery.js';
 import networkerRouter from './routes/networker.js';
 import copilotRouter from './routes/copilot.js';
+import eventsRouter from './routes/events.js';
+import workdayRouter from './routes/workday.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +27,8 @@ app.use('/api/agent', requireAuth, agentRouter);
 app.use('/api/discovery', requireAuth, discoveryRouter);
 app.use('/api/networker', requireAuth, networkerRouter);
 app.use('/api/copilot', requireAuth, copilotRouter);
+app.use('/api/events', requireAuth, eventsRouter);
+app.use('/api/workday', requireAuth, workdayRouter);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

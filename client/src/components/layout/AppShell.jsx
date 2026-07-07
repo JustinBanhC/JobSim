@@ -4,6 +4,12 @@ const WORKSPACE = { name: 'JobSim', slug: 'Hunt console' };
 
 const NAV_ITEMS = [
   {
+    id: 'dashboard',
+    label: 'Dashboard',
+    rail: 'Mission control / signals',
+    icon: 'gauge',
+  },
+  {
     id: 'applications',
     label: 'Job applications',
     rail: 'Pipeline / stages / SLAs',
@@ -27,6 +33,12 @@ const NAV_ITEMS = [
     rail: 'People / outreach log',
     icon: 'people',
   },
+  {
+    id: 'events',
+    label: 'Events',
+    rail: 'Fairs / hiring events',
+    icon: 'calendar',
+  },
 ];
 
 function NavIcon({ name, active }) {
@@ -40,6 +52,15 @@ function NavIcon({ name, active }) {
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
   };
+  if (name === 'gauge') {
+    return (
+      <svg viewBox="0 0 24 24" {...common}>
+        <path d="M4 19a9 9 0 1 1 16 0" />
+        <path d="M12 15 16 9" />
+        <circle cx="12" cy="15" r="1" fill={stroke} />
+      </svg>
+    );
+  }
   if (name === 'ticket') {
     return (
       <svg viewBox="0 0 24 24" {...common}>
@@ -72,6 +93,15 @@ function NavIcon({ name, active }) {
           fill={active ? 'var(--color-accent-bright)' : 'none'}
           stroke={stroke}
         />
+      </svg>
+    );
+  }
+  if (name === 'calendar') {
+    return (
+      <svg viewBox="0 0 24 24" {...common}>
+        <rect x="3" y="5" width="18" height="16" />
+        <path d="M3 10h18M8 2v6M16 2v6" />
+        <circle cx="12" cy="15.5" r="1.5" fill={stroke} />
       </svg>
     );
   }
