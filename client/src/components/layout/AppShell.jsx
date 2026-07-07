@@ -33,6 +33,12 @@ const NAV_ITEMS = [
     rail: 'People / outreach log',
     icon: 'people',
   },
+  {
+    id: 'events',
+    label: 'Events',
+    rail: 'Fairs / hiring events',
+    icon: 'calendar',
+  },
 ];
 
 function NavIcon({ name, active }) {
@@ -87,6 +93,15 @@ function NavIcon({ name, active }) {
           fill={active ? 'var(--color-accent-bright)' : 'none'}
           stroke={stroke}
         />
+      </svg>
+    );
+  }
+  if (name === 'calendar') {
+    return (
+      <svg viewBox="0 0 24 24" {...common}>
+        <rect x="3" y="5" width="18" height="16" />
+        <path d="M3 10h18M8 2v6M16 2v6" />
+        <circle cx="12" cy="15.5" r="1.5" fill={stroke} />
       </svg>
     );
   }

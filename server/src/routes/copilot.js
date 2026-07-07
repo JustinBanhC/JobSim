@@ -34,16 +34,20 @@ const mappingSchema = {
   },
 };
 
-async function mapFields(fields, profile) {
+async function mapFields(fields, profile, approvedAnswers = []) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
   const ai = new GoogleGenAI({ apiKey });
+
+  const approvedBlock = approvedAnswers.length
+    ? `\nUSER-APPROVED ANSWERS (authoritative — when a form field asks for one of these, use this exact answer instead of deriving from the profile):\n${approvedAnswers.map((a) => `- ${a.label}: ${a.value}`).join('\n')}\n`
+    : '';
 
   const prompt = `You are filling a job application form for a candidate. Given the form fields and the candidate profile, return the value to type into each field you can confidently fill. Skip fields you cannot map (don't include them). Never invent data not in the profile. For yes/no or select fields, the value must EXACTLY match one of the listed options.
 
 CANDIDATE PROFILE (JSON):
 ${JSON.stringify(profile, null, 2)}
-
+${approvedBlock}
 FORM FIELDS (index, type, label, options):
 ${fields.map((f, i) => `${i}. [${f.type}] "${f.label}"${f.options?.length ? ` options: ${f.options.join(' / ')}` : ''}`).join('\n')}
 
@@ -56,6 +60,35 @@ Return a JSON array of {index, value}.`;
   });
   const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
   return JSON.parse(text || '[]');
+}
+
+// ---- Saved per-job answers (see routes/workday.js) ----
+// Stored as [{key, label, value}]. Exact/close label matches are filled
+// directly (no LLM); the rest are passed to the AI as authoritative context.
+
+const normalizeLabel = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+function loadApprovedAnswers(jobId) {
+  try {
+    const row = db.prepare('SELECT data FROM application_answers WHERE job_id = ?').get(jobId);
+    const parsed = row ? JSON.parse(row.data) : [];
+    return (Array.isArray(parsed) ? parsed : []).filter((a) => a && a.label && a.value);
+  } catch {
+    return [];
+  }
+}
+
+function matchApprovedAnswer(fieldLabel, approved) {
+  const fl = normalizeLabel(fieldLabel);
+  if (!fl) return null;
+  let close = null;
+  for (const a of approved) {
+    const al = normalizeLabel(a.label);
+    if (!al) continue;
+    if (al === fl) return a; // exact
+    if (!close && Math.min(al.length, fl.length) >= 5 && (fl.includes(al) || al.includes(fl))) close = a;
+  }
+  return close;
 }
 
 // ---- Browser session (one at a time, headed, never submits) ----
@@ -109,6 +142,9 @@ router.post('/apply/:jobId', async (req, res) => {
     return res.status(400).json({ error: 'Profile vault is empty. Fill in your profile first.' });
   }
 
+  // User-approved answers saved from the Workday preview panel — authoritative over raw profile data.
+  const approvedAnswers = loadApprovedAnswers(job.id);
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -142,17 +178,35 @@ router.post('/apply/:jobId', async (req, res) => {
       if (!fresh.length) return;
 
       send('fields_found', { count: fresh.length, labels: fresh.map((f) => f.label).slice(0, 20) });
-      let mappings;
-      try {
-        mappings = await mapFields(fresh, profile);
-      } catch (err) {
-        send('log', { msg: `AI mapping failed: ${err.message}` });
-        return;
+
+      // Saved answers with an exact/close label match are used directly — no LLM.
+      const toFill = [];
+      const needAI = [];
+      for (const f of fresh) {
+        const hit = approvedAnswers.length ? matchApprovedAnswer(f.label, approvedAnswers) : null;
+        if (hit && (f.type !== 'select' || !f.options || f.options.includes(hit.value))) {
+          toFill.push({ field: f, value: hit.value, saved: true });
+        } else {
+          needAI.push(f);
+        }
+      }
+      if (toFill.length) send('log', { msg: `Using ${toFill.length} saved answer(s) directly (no AI).` });
+
+      if (needAI.length) {
+        let mappings = [];
+        try {
+          mappings = await mapFields(needAI, profile, approvedAnswers);
+        } catch (err) {
+          send('log', { msg: `AI mapping failed: ${err.message}` });
+        }
+        for (const m of mappings) {
+          const field = needAI[m.index];
+          if (field && m.value) toFill.push({ field, value: m.value });
+        }
       }
 
-      for (const m of mappings) {
-        const field = fresh[m.index];
-        if (!field || !m.value) continue;
+      for (const { field, value, saved } of toFill) {
+        if (!field || !value) continue;
         const selector = `[data-copilot-idx="${field.idx}"]`;
         try {
           if (field.type === 'select') {
@@ -163,7 +217,7 @@ router.post('/apply/:jobId', async (req, res) => {
                 el.value = opt.value;
                 el.dispatchEvent(new Event('change', { bubbles: true }));
               }
-            }, selector, m.value);
+            }, selector, value);
           } else if (field.type === 'checkbox' || field.type === 'radio') {
             continue; // too risky to auto-toggle consent boxes — user decides
           } else if (field.type === 'file') {
@@ -171,10 +225,10 @@ router.post('/apply/:jobId', async (req, res) => {
             continue;
           } else {
             await page.click(selector, { clickCount: 3 }).catch(() => {});
-            await page.type(selector, String(m.value), { delay: 25 });
+            await page.type(selector, String(value), { delay: 25 });
           }
           filledLabels.add(field.label);
-          send('filled', { label: field.label, value: String(m.value).slice(0, 80) });
+          send('filled', { label: field.label, value: String(value).slice(0, 80), ...(saved ? { source: 'saved' } : {}) });
         } catch (err) {
           send('log', { msg: `Could not fill "${field.label}": ${err.message.split('\n')[0]}` });
         }

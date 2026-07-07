@@ -88,6 +88,69 @@ export const api = {
     saveProfile: (data) => request('/copilot/profile', { method: 'PUT', body: JSON.stringify(data) }),
     apply: (jobId, onEvent) => streamRequest(`/copilot/apply/${jobId}`, {}, onEvent),
   },
+  events: {
+    list: (params) => {
+      const qs = new URLSearchParams(params).toString();
+      return request(`/events${qs ? `?${qs}` : ''}`);
+    },
+    create: (data) => request('/events', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => request(`/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => request(`/events/${id}`, { method: 'DELETE' }),
+    searchLinks: (q) => request(`/events/search-links?q=${encodeURIComponent(q || '')}`),
+    scanJson: (data) => request('/events/scan', { method: 'POST', body: JSON.stringify(data) }),
+    // Content-type aware scan: the local server streams SSE; the serverless app
+    // answers with a single JSON payload (delivered as one 'result' event).
+    scan: (data, onEvent) => {
+      const controller = new AbortController();
+      const promise = (async () => {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${BASE}/events/scan`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(data),
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(err.error || 'Scan failed');
+        }
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('text/event-stream')) {
+          const result = await res.json();
+          onEvent('result', result);
+          return result;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let eventType = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7).trim();
+            } else if (line.startsWith('data: ') && eventType) {
+              try {
+                onEvent(eventType, JSON.parse(line.slice(6)));
+              } catch { /* skip malformed */ }
+              eventType = null;
+            }
+          }
+        }
+        return null;
+      })();
+      return { promise, abort: () => controller.abort() };
+    },
+  },
+  workday: {
+    preview: (jobId, { regenerate } = {}) => request(`/workday/preview/${jobId}${regenerate ? '?regenerate=1' : ''}`),
+    getAnswers: (jobId) => request(`/workday/answers/${jobId}`),
+    saveAnswers: (jobId, answers) => request(`/workday/answers/${jobId}`, { method: 'PUT', body: JSON.stringify({ answers }) }),
+  },
 };
 
 /**

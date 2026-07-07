@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../lib/api';
+import WorkdayPreviewPanel from './WorkdayPreviewPanel';
 
 const mono = { fontFamily: 'var(--font-mono)' };
 
@@ -60,6 +61,7 @@ export default function CopilotPanel({ job }) {
           ))}
         </div>
       )}
+      <WorkdayPreviewPanel job={job} />
     </div>
   );
 }

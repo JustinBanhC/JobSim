@@ -413,6 +413,300 @@ app.post('/api/agent/chat', async (req, res) => {
   res.end();
 });
 
+// ── Events Radar ──
+// Self-contained copy of the local scan helpers (server/src/events/parse.js) —
+// this file deploys as an isolated Vercel function, so it stays standalone.
+
+const EV_TYPES = ['career_fair', 'hiring_event', 'info_session', 'invite_event', 'conference', 'other'];
+const EV_STATUSES = ['new', 'saved', 'registered', 'attended', 'dismissed'];
+
+function evDefaultKeywords() {
+  return ['engineering career fair', 'tech hiring event', 'university recruiting event'];
+}
+
+function evBuildQueries(keywords, location) {
+  const loc = location ? ` "${location}"` : '';
+  const queries = [];
+  for (const kw of keywords) {
+    queries.push(
+      { q: `site:linkedin.com/events ${kw}${loc}` },
+      { q: `site:linkedin.com/posts "hiring event" ${kw}${loc}` },
+      { q: `site:instagram.com ("career fair" OR "hiring event") ${kw}${loc}` },
+      { q: `site:eventbrite.com ${kw}${loc}` },
+      { q: `site:lu.ma ${kw}${loc}` },
+    );
+  }
+  return queries;
+}
+
+function evSearchLinks(q) {
+  const enc = encodeURIComponent(q);
+  const tag = q.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 30) || 'careerfair';
+  const g = (query) => `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  return [
+    { label: 'LinkedIn events', url: `https://www.linkedin.com/search/results/events/?keywords=${enc}` },
+    { label: 'LinkedIn posts', url: `https://www.linkedin.com/search/results/content/?keywords=${enc}` },
+    { label: 'Instagram keyword', url: `https://www.instagram.com/explore/search/keyword/?q=${enc}` },
+    { label: `Instagram #${tag}`, url: `https://www.instagram.com/explore/tags/${tag}/` },
+    { label: 'Eventbrite x-ray', url: g(`site:eventbrite.com ${q}`) },
+    { label: 'Luma x-ray', url: g(`site:lu.ma ${q}`) },
+    { label: 'Google', url: g(`${q} ("career fair" OR "hiring event")`) },
+  ];
+}
+
+function evSourceFromUrl(url) {
+  const u = (url || '').toLowerCase();
+  if (u.includes('linkedin.com')) return 'linkedin';
+  if (u.includes('instagram.com')) return 'instagram';
+  if (u.includes('eventbrite.')) return 'eventbrite';
+  if (u.includes('lu.ma')) return 'luma';
+  return 'other';
+}
+
+function evCleanTitle(title) {
+  return (title || '')
+    .replace(/\s*[|·–—-]\s*(LinkedIn|Instagram|Eventbrite|Luma|lu\.ma)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function evNormalizeDate(value) {
+  if (!value || typeof value !== 'string') return null;
+  const m = value.trim().match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+  if (!m) return null;
+  const iso = `${m[1]}-${m[2]}-${m[3] || '01'}`;
+  return Number.isNaN(Date.parse(iso)) ? null : iso;
+}
+
+function evNormalizeExtracted(raw, item) {
+  if (!raw || raw.is_event !== true) return null;
+  const title = (raw.title || '').trim() || evCleanTitle(item?.title);
+  if (!title || !item?.link) return null;
+  const score = Number.isFinite(raw.relevance_score)
+    ? Math.min(100, Math.max(1, Math.round(raw.relevance_score)))
+    : null;
+  return {
+    title: title.slice(0, 300),
+    host: (raw.host || '').trim() || null,
+    event_type: EV_TYPES.includes(raw.event_type) ? raw.event_type : 'other',
+    url: item.link,
+    source: evSourceFromUrl(item.link),
+    location: (raw.location || '').trim() || null,
+    is_virtual: raw.is_virtual === true ? true : raw.is_virtual === false ? false : null,
+    event_date: evNormalizeDate(raw.event_date),
+    description: item.snippet || null,
+    score,
+    score_reasons: JSON.stringify(Array.isArray(raw.reasons) ? raw.reasons.slice(0, 5) : []),
+  };
+}
+
+function evFromRawItem(item) {
+  const title = evCleanTitle(item?.title);
+  if (!title || !item?.link) return null;
+  return {
+    title: title.slice(0, 300), host: null, event_type: 'other', url: item.link,
+    source: evSourceFromUrl(item.link), location: null, is_virtual: null, event_date: null,
+    description: item.snippet || null, score: null, score_reasons: '[]',
+  };
+}
+
+async function evCseSearch(query) {
+  const url = `https://www.googleapis.com/customsearch/v1?key=${process.env.GOOGLE_CSE_KEY}&cx=${process.env.GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=5`;
+  const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!resp.ok) throw new Error(`Google CSE: HTTP ${resp.status}`);
+  const data = await resp.json();
+  return data.items || [];
+}
+
+const EV_EXTRACTION_PROMPT = `You are an event triage judge for a job-seeking engineering student. You receive raw PUBLIC web search results (title / snippet / url) that may mention recruiting events.
+
+For EACH result decide whether it describes an actual EVENT a candidate could attend: a career fair, hiring event, invite-only recruiting event, info session, or recruiting-relevant conference. Job postings, news articles, generic company or profile pages, and past-event photo dumps are NOT events — mark those is_event=false.
+
+For results that ARE events, extract:
+- title: concise event title
+- host: hosting company/org if identifiable, else ""
+- event_type: one of career_fair | hiring_event | info_session | invite_event | conference | other
+- event_date: ISO date (YYYY-MM-DD) ONLY if inferable from the text, else ""
+- location: city/venue if mentioned, else ""
+- is_virtual: true only if clearly online/virtual
+- relevance_score: 1-100 relevance for a CS/EE student seeking tech internships and new-grad roles (university/tech recruiting events score high; unrelated industries score low)
+- reasons: 1-3 short reasons for the score
+
+Return ONLY a JSON array with one object per input result, echoing each result's id.`;
+
+const evExtractionSchema = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      id: { type: 'integer' },
+      is_event: { type: 'boolean' },
+      title: { type: 'string' },
+      host: { type: 'string' },
+      event_type: { type: 'string' },
+      event_date: { type: 'string' },
+      location: { type: 'string' },
+      is_virtual: { type: 'boolean' },
+      relevance_score: { type: 'integer' },
+      reasons: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['id', 'is_event'],
+  },
+};
+
+async function evExtractEvents(items, log) {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const out = [];
+  for (let i = 0; i < items.length; i += 10) {
+    const batch = items.slice(i, i + 10);
+    const lines = batch
+      .map((it, idx) => `RESULT id=${idx}\nTitle: ${it.title || ''}\nSnippet: ${it.snippet || ''}\nURL: ${it.link}`)
+      .join('\n\n');
+    try {
+      const response = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+        contents: [{ role: 'user', parts: [{ text: `${EV_EXTRACTION_PROMPT}\n\nSEARCH RESULTS:\n\n${lines}` }] }],
+        config: { responseMimeType: 'application/json', responseSchema: evExtractionSchema },
+      });
+      const parsed = JSON.parse(response.candidates?.[0]?.content?.parts?.[0]?.text || '[]');
+      if (!Array.isArray(parsed)) throw new Error('Unexpected response shape');
+      for (const r of parsed) {
+        const ev = evNormalizeExtracted(r, batch[r.id]);
+        if (ev) out.push(ev);
+      }
+    } catch (err) {
+      log.push(`Gemini extraction batch failed (${err.message}) — keeping raw results unscored`);
+      for (const it of batch) {
+        const ev = evFromRawItem(it);
+        if (ev) out.push(ev);
+      }
+    }
+  }
+  return out;
+}
+
+app.get('/api/events', async (req, res) => {
+  const sb = getSupabase(req);
+  let query = sb.from('events').select('*');
+  if (req.query.status) query = query.eq('status', req.query.status);
+  const { data, error } = await query
+    .order('event_date', { ascending: true, nullsFirst: false })
+    .order('date_discovered', { ascending: false });
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+});
+
+app.get('/api/events/search-links', async (req, res) => {
+  const q = (req.query.q || '').trim() || evDefaultKeywords()[0];
+  res.json({ query: q, links: evSearchLinks(q) });
+});
+
+app.post('/api/events', async (req, res) => {
+  const sb = getSupabase(req);
+  const userId = await getUserId(req);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  const { title, host, event_type = 'other', url, source = 'manual', location, is_virtual, event_date, description, notes } = req.body;
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+  if (!EV_TYPES.includes(event_type)) return res.status(400).json({ error: 'Invalid event_type' });
+  const { data: event, error } = await sb.from('events').insert({
+    title, host, event_type, url, source, location,
+    is_virtual: is_virtual ?? null, event_date, description, notes, user_id: userId,
+  }).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(201).json(event);
+});
+
+app.put('/api/events/:id', async (req, res) => {
+  const sb = getSupabase(req);
+  const { title, host, event_type, url, source, location, is_virtual, event_date, description, status, notes } = req.body;
+  if (status !== undefined && !EV_STATUSES.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  if (event_type !== undefined && !EV_TYPES.includes(event_type)) return res.status(400).json({ error: 'Invalid event_type' });
+  const payload = {};
+  if (title !== undefined) payload.title = title;
+  if (host !== undefined) payload.host = host;
+  if (event_type !== undefined) payload.event_type = event_type;
+  if (url !== undefined) payload.url = url;
+  if (source !== undefined) payload.source = source;
+  if (location !== undefined) payload.location = location;
+  if (is_virtual !== undefined) payload.is_virtual = is_virtual;
+  if (event_date !== undefined) payload.event_date = event_date;
+  if (description !== undefined) payload.description = description;
+  if (status !== undefined) payload.status = status;
+  if (notes !== undefined) payload.notes = notes;
+  const { data: event, error } = await sb.from('events').update(payload).eq('id', req.params.id).select().single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(event);
+});
+
+app.delete('/api/events/:id', async (req, res) => {
+  const sb = getSupabase(req);
+  const { error } = await sb.from('events').delete().eq('id', req.params.id);
+  if (error) return res.status(400).json({ error: error.message });
+  res.status(204).end();
+});
+
+// Non-streaming scan: same CSE + Gemini pipeline as the local SSE route,
+// returned as one JSON payload (Vercel functions don't stream here).
+app.post('/api/events/scan', async (req, res) => {
+  const sb = getSupabase(req);
+  const userId = await getUserId(req);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { keywords: rawKeywords, location } = req.body || {};
+  const cleaned = Array.isArray(rawKeywords) ? rawKeywords.map((k) => String(k).trim()).filter(Boolean) : [];
+  const keywords = cleaned.length ? cleaned : evDefaultKeywords();
+  const linkQuery = [keywords[0], location].filter(Boolean).join(' ');
+  const links = evSearchLinks(linkQuery);
+  const log = [];
+
+  if (!process.env.GOOGLE_CSE_KEY || !process.env.GOOGLE_CSE_ID) {
+    log.push('Google CSE keys not set — keyless mode. Use the manual search links.');
+    return res.json({ found: 0, saved: 0, events: [], links, log, keyless: true });
+  }
+
+  const seen = new Map();
+  for (const { q } of evBuildQueries(keywords, location)) {
+    try {
+      const items = await evCseSearch(q);
+      for (const item of items || []) {
+        if (item.link && !seen.has(item.link)) seen.set(item.link, item);
+      }
+    } catch (err) {
+      log.push(`Query failed: ${err.message}`);
+    }
+  }
+
+  let rawItems = [...seen.values()];
+  const urls = rawItems.map((i) => i.link);
+  if (urls.length) {
+    const { data: existing } = await sb.from('events').select('url').in('url', urls);
+    const known = new Set((existing || []).map((e) => e.url));
+    rawItems = rawItems.filter((i) => !known.has(i.link));
+  }
+  log.push(`${seen.size} public results found, ${rawItems.length} new`);
+
+  let extracted = [];
+  if (rawItems.length) {
+    if (!process.env.GEMINI_API_KEY) {
+      log.push('GEMINI_API_KEY not set — saving raw results unscored (title/snippet only)');
+      extracted = rawItems.map(evFromRawItem);
+    } else {
+      extracted = await evExtractEvents(rawItems, log);
+    }
+  }
+
+  const savedEvents = [];
+  for (const ev of extracted) {
+    if (!ev) continue;
+    const { data, error } = await sb.from('events')
+      .upsert({ ...ev, user_id: userId, status: 'new' }, { onConflict: 'user_id,url', ignoreDuplicates: true })
+      .select();
+    if (!error && data?.length) savedEvents.push(data[0]);
+  }
+
+  res.json({ found: seen.size, saved: savedEvents.length, events: savedEvents, links, log });
+});
+
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 export default app;

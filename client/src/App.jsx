@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage';
 import DiscoverPage from './pages/DiscoverPage';
 import SkillsPage from './pages/SkillsPage';
 import ConnectionsPage from './pages/ConnectionsPage';
+import EventsPage from './pages/EventsPage';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import AgentPanel from './components/AgentPanel';
@@ -98,6 +99,7 @@ function App() {
       {view === 'discover' && <DiscoverPage key={`discover-${refreshKey}`} />}
       {view === 'skills' && <SkillsPage key={`skills-${refreshKey}`} />}
       {view === 'connections' && <ConnectionsPage key={`contacts-${refreshKey}`} />}
+      {view === 'events' && <EventsPage key={`events-${refreshKey}`} />}
       <AgentPanel
         open={agentOpen}
         onClose={() => setAgentOpen(false)}

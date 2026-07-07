@@ -181,3 +181,38 @@ create policy "Users can delete own learning logs" on learning_logs for delete
 -- Supports the per-status position-count query run on every application insert
 -- and the kanban board ordering.
 create index if not exists idx_applications_user_status on applications(user_id, status);
+
+-- Events Radar (job fairs / hiring events / info sessions)
+create table if not exists events (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  host text,
+  event_type text default 'other',
+  url text,
+  source text default 'other',
+  location text,
+  is_virtual boolean,
+  event_date text,
+  description text,
+  score int,
+  score_reasons text,
+  status text default 'new',
+  notes text,
+  date_discovered timestamptz not null default now(),
+  unique (user_id, url)
+);
+
+alter table events enable row level security;
+
+-- Events policies (mirror applications)
+drop policy if exists "Users can view own events" on events;
+create policy "Users can view own events" on events for select using (auth.uid() = user_id);
+drop policy if exists "Users can insert own events" on events;
+create policy "Users can insert own events" on events for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can update own events" on events;
+create policy "Users can update own events" on events for update using (auth.uid() = user_id);
+drop policy if exists "Users can delete own events" on events;
+create policy "Users can delete own events" on events for delete using (auth.uid() = user_id);
+
+create index if not exists idx_events_user on events(user_id);
