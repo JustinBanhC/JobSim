@@ -4,6 +4,7 @@ import { dirname, join } from 'path';
 import db from '../db.js';
 import { politeFetch } from './fetcher.js';
 import { hardFilter } from './hardFilter.js';
+import { loadPrefs } from './prefs.js';
 import greenhouse from './adapters/greenhouse.js';
 import lever from './adapters/lever.js';
 import ashby from './adapters/ashby.js';
@@ -63,6 +64,7 @@ export async function runIngestion({ sourceIds = null, emit = () => {}, score = 
   const summary = { sources: 0, fetched: 0, inserted: 0, filtered: 0, errors: [] };
 
   try {
+    const prefs = loadPrefs(); // load once per run; hardFilter compiles matchers per prefs object
     let sql = 'SELECT * FROM job_sources WHERE enabled = 1';
     const params = [];
     if (sourceIds?.length) {
@@ -87,7 +89,7 @@ export async function runIngestion({ sourceIds = null, emit = () => {}, score = 
 
         const tx = db.transaction(() => {
           for (const job of jobs) {
-            const verdict = hardFilter(job);
+            const verdict = hardFilter(job, prefs);
             const result = insertJob.run({
               source: source.board_type,
               source_id: source.id,

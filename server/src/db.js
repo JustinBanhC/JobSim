@@ -130,6 +130,12 @@ db.exec(`
     data TEXT NOT NULL DEFAULT '{}',
     date_updated TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS search_prefs (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL DEFAULT '{}',
+    date_updated TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 function addColumnIfMissing(table, column, ddl) {

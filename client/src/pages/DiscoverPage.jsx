@@ -4,6 +4,7 @@ import RunPanel from '../components/discover/RunPanel';
 import NetworkerPanel from '../components/discover/NetworkerPanel';
 import CopilotPanel from '../components/discover/CopilotPanel';
 import ProfileVault from '../components/discover/ProfileVault';
+import SearchPrefsPanel from '../components/discover/SearchPrefsPanel';
 import { useDiscoveredJobs } from '../hooks/useDiscoveredJobs';
 
 const mono = { fontFamily: 'var(--font-mono)' };
@@ -42,6 +43,7 @@ export default function DiscoverPage() {
   const [expanded, setExpanded] = useState(null);
   const [busy, setBusy] = useState(null);
   const [vaultOpen, setVaultOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   const visible = useMemo(() => {
     const min = SCORE_TABS.find((t) => t.id === tab)?.min ?? 0;
@@ -97,17 +99,28 @@ export default function DiscoverPage() {
         title="Radar"
         description="Boards are polled via official APIs, hard-filtered, then scored 1-100 by AI against your profile. Promote winners into the pipeline."
         actions={
-          <button
-            type="button"
-            onClick={() => setVaultOpen(true)}
-            className="ui-btn-ghost h-10 px-5 text-[9px] uppercase tracking-[0.2em] cursor-pointer"
-            style={mono}
-          >
-            Profile vault
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setPrefsOpen(true)}
+              className="ui-btn-ghost h-10 px-5 text-[9px] uppercase tracking-[0.2em] cursor-pointer"
+              style={mono}
+            >
+              Target roles
+            </button>
+            <button
+              type="button"
+              onClick={() => setVaultOpen(true)}
+              className="ui-btn-ghost h-10 px-5 text-[9px] uppercase tracking-[0.2em] cursor-pointer"
+              style={mono}
+            >
+              Profile vault
+            </button>
+          </>
         }
       />
       {vaultOpen && <ProfileVault onClose={() => setVaultOpen(false)} />}
+      {prefsOpen && <SearchPrefsPanel onClose={() => setPrefsOpen(false)} onSaved={() => refresh()} />}
       <div className="flex-1 px-5 md:px-10 lg:px-14 pb-14 pt-8 space-y-6 max-w-[1400px] mx-auto w-full">
         <RunPanel onComplete={() => refresh()} />
 

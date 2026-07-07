@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { runIngestion, isRunning, seedSourcesIfEmpty } from '../discovery/engine.js';
 import { scoreJobs } from '../discovery/scorer.js';
+import { loadPrefs, savePrefs } from '../discovery/prefs.js';
 
 const router = Router();
 
@@ -116,12 +117,32 @@ router.post('/run', async (req, res) => {
   res.end();
 });
 
-// Re-score jobs that are still unscored (e.g. scoring failed mid-run)
+// Re-score jobs. Default: only jobs still unscored (e.g. scoring failed mid-run).
+// With { all: true }: reset scores on every non-dismissed, non-promoted job and
+// rescore the lot (use after changing search prefs).
 router.post('/rescore', async (req, res) => {
+  if (req.body?.all) {
+    db.prepare(
+      "UPDATE discovered_jobs SET score = NULL, score_reasons = NULL, status = 'new' WHERE status IN ('new', 'scored')"
+    ).run();
+  }
   const unscored = db.prepare("SELECT id FROM discovered_jobs WHERE status = 'new'").all().map((r) => r.id);
   if (!unscored.length) return res.json({ scored: 0, failed: 0 });
   const result = await scoreJobs(unscored);
   res.json(result);
+});
+
+// ---- Search preferences (target roles / scoring prefs) ----
+
+router.get('/prefs', (_req, res) => {
+  res.json(loadPrefs());
+});
+
+router.put('/prefs', (req, res) => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return res.status(400).json({ error: 'Body must be a prefs object' });
+  }
+  res.json(savePrefs(req.body));
 });
 
 // ---- Sources CRUD ----

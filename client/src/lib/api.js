@@ -68,6 +68,11 @@ export const api = {
     restore: (id) => request(`/discovery/jobs/${id}/restore`, { method: 'POST' }),
     run: (sourceIds, onEvent) => streamRequest('/discovery/run', { source_ids: sourceIds }, onEvent),
     rescore: () => request('/discovery/rescore', { method: 'POST' }),
+    rescoreAll: () => request('/discovery/rescore', { method: 'POST', body: JSON.stringify({ all: true }) }),
+    prefs: {
+      get: () => request('/discovery/prefs'),
+      save: (data) => request('/discovery/prefs', { method: 'PUT', body: JSON.stringify(data) }),
+    },
     sources: {
       list: () => request('/discovery/sources'),
       create: (data) => request('/discovery/sources', { method: 'POST', body: JSON.stringify(data) }),
