@@ -5,6 +5,17 @@ import { GoogleGenAI } from '@google/genai';
 const app = express();
 app.use(express.json());
 
+// Fail fast with a clear JSON error when Supabase env vars are missing —
+// otherwise createClient() throws inside an async handler and the function
+// crashes with an opaque FUNCTION_INVOCATION_FAILED.
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health') return next();
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    return res.status(500).json({ error: 'Server misconfigured: SUPABASE_URL and SUPABASE_ANON_KEY environment variables are required' });
+  }
+  next();
+});
+
 function getSupabase(req) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   const supabase = createClient(
@@ -20,9 +31,13 @@ function getServiceSupabase() {
 }
 
 async function getUserId(req) {
-  const sb = getSupabase(req);
-  const { data: { user } } = await sb.auth.getUser();
-  return user?.id;
+  try {
+    const sb = getSupabase(req);
+    const { data: { user } } = await sb.auth.getUser();
+    return user?.id;
+  } catch {
+    return null;
+  }
 }
 
 // ── Applications ──
@@ -61,6 +76,7 @@ app.post('/api/applications', async (req, res) => {
 
 app.put('/api/applications/:id', async (req, res) => {
   const sb = getSupabase(req);
+  if (!(await getUserId(req))) return res.status(401).json({ error: 'Unauthorized' });
   const { company, role, status, source, url, salary_range, location, notes, date_applied } = req.body;
   const payload = {};
   if (company !== undefined) payload.company = company;
@@ -122,6 +138,7 @@ app.post('/api/applications/:id/activity', async (req, res) => {
 
 app.delete('/api/applications/:id', async (req, res) => {
   const sb = getSupabase(req);
+  if (!(await getUserId(req))) return res.status(401).json({ error: 'Unauthorized' });
   const { error } = await sb.from('applications').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).end();
@@ -156,6 +173,7 @@ app.post('/api/skills', async (req, res) => {
 
 app.put('/api/skills/:id', async (req, res) => {
   const sb = getSupabase(req);
+  if (!(await getUserId(req))) return res.status(401).json({ error: 'Unauthorized' });
   const { name, priority, current_level, target_level, status, resources } = req.body;
   const payload = {};
   if (name !== undefined) payload.name = name;
@@ -184,6 +202,7 @@ app.post('/api/skills/:id/learning-logs', async (req, res) => {
 
 app.delete('/api/skills/:id', async (req, res) => {
   const sb = getSupabase(req);
+  if (!(await getUserId(req))) return res.status(401).json({ error: 'Unauthorized' });
   const { error } = await sb.from('skills').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).end();
@@ -218,6 +237,7 @@ app.post('/api/contacts', async (req, res) => {
 
 app.put('/api/contacts/:id', async (req, res) => {
   const sb = getSupabase(req);
+  if (!(await getUserId(req))) return res.status(401).json({ error: 'Unauthorized' });
   const { name, title, company, email, linkedin_url, how_connected, notes, outreach_status, tags } = req.body;
   const payload = {};
   if (name !== undefined) payload.name = name;
@@ -252,6 +272,7 @@ app.post('/api/contacts/:id/interactions', async (req, res) => {
 
 app.delete('/api/contacts/:id', async (req, res) => {
   const sb = getSupabase(req);
+  if (!(await getUserId(req))) return res.status(401).json({ error: 'Unauthorized' });
   const { error } = await sb.from('contacts').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).end();
@@ -349,6 +370,7 @@ async function execFn(name, args, userId) {
 app.post('/api/agent/chat', async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not configured' });
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' });
 
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
